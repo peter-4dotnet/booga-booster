@@ -30,8 +30,8 @@
 
 ## 5. Frontend models
 
-- [ ] 5.1 Extend the stream DTO interfaces and mapping in `ride.models.ts` with the light fields, and add a `LIGHT_RATINGS` constant; extend `ride.models.spec.ts` for the mapping, `level = lumens / rating`, and the 87 000 lm total; verify `npx vitest run src/app/ride-dashboard/models/ride.models.spec.ts` passes
-- [ ] 5.2 Update the simulated and fake telemetry sources to produce light values, so dev mode and existing specs keep working; verify the existing frontend specs pass
+- [x] 5.1 Extend the stream DTO interfaces and mapping in `ride.models.ts` with the light fields, and add a `LIGHT_RATINGS` constant; extend `ride.models.spec.ts` for the mapping, `level = lumens / rating`, and the 87 000 lm total; verify `npx vitest run src/app/ride-dashboard/models/ride.models.spec.ts` passes
+- [x] 5.2 Update the simulated and fake telemetry sources to produce light values, so dev mode and existing specs keep working; verify the existing frontend specs pass
 
 ## 6. Visualization
 

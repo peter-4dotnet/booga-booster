@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 
-import { Gondola, HUB_COUNT, Hub } from '../models/ride.models';
-import { createGondolas } from '../testing/fake-ride-telemetry-source';
+import { Gondola, HUB_COUNT, Hub, LIGHT_RATINGS, fixtureLight } from '../models/ride.models';
+import { createGondolas, createTelemetry } from '../testing/fake-ride-telemetry-source';
 import { GondolaPanel } from './gondola-panel/gondola-panel';
 import { SecurityPanel } from './security-panel/security-panel';
 import { SpeedPanel } from './speed-panel/speed-panel';
@@ -45,6 +45,7 @@ describe('SecurityPanel', () => {
 describe('SpeedPanel', () => {
   it('shows the mill speed and each hub speed independently with units', () => {
     const hubs: Hub[] = Array.from({ length: HUB_COUNT }, (_, i) => ({
+      ...createTelemetry().hubs[i],
       id: i + 1,
       power: 50,
       direction: 'forward',
@@ -143,6 +144,7 @@ describe('GondolaPanel severity', () => {
       ],
       gForce: { vertical, lateral },
       angleDegrees: 0,
+      light: fixtureLight(0, LIGHT_RATINGS.gondola),
     };
   }
 

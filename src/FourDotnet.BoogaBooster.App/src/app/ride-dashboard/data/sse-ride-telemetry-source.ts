@@ -6,6 +6,7 @@ import {
   GONDOLA_COUNT,
   Gondola,
   HUB_COUNT,
+  LIGHT_RATINGS,
   MotorDirection,
   RideCommand,
   RideTelemetry,
@@ -13,6 +14,8 @@ import {
   SEATS_PER_GONDOLA,
   Seat,
   clampPower,
+  fixtureLight,
+  fixtureLights,
   mapRideTelemetry,
   toRideStateName,
 } from '../models/ride.models';
@@ -70,17 +73,26 @@ export function atRestTelemetry(): RideTelemetry {
     seats: emptySeats(),
     gForce: { vertical: 0, lateral: 0 },
     angleDegrees: 0,
+    light: fixtureLight(0, LIGHT_RATINGS.gondola),
   }));
 
   return {
     state: 'idle',
     availableTransitions: ['loading'],
-    mill: { power: 0, direction: 'forward', speedRpm: 0 },
+    mill: {
+      power: 0,
+      direction: 'forward',
+      speedRpm: 0,
+      crownLight: fixtureLight(0, LIGHT_RATINGS.millCrown),
+      armLights: fixtureLights(undefined, HUB_COUNT, LIGHT_RATINGS.millArm),
+    },
     hubs: Array.from({ length: HUB_COUNT }, (_, i) => ({
       id: i + 1,
       power: 0,
       direction: 'forward',
       speedRpm: 0,
+      light: fixtureLight(0, LIGHT_RATINGS.hub),
+      armLights: fixtureLights(undefined, GONDOLAS_PER_HUB, LIGHT_RATINGS.hubArm),
     })),
     gondolas,
     gondolaBrakeEngaged: true,

@@ -2,15 +2,19 @@ import { signal } from '@angular/core';
 
 import { RideTelemetrySource } from '../data/ride-telemetry-source';
 import {
+  GONDOLAS_PER_HUB,
   GONDOLA_COUNT,
   Gondola,
   HUB_COUNT,
+  LIGHT_RATINGS,
   RideCommand,
   RideTelemetry,
   SEATS_PER_GONDOLA,
   Seat,
   SeatState,
   clampPower,
+  fixtureLight,
+  fixtureLights,
 } from '../models/ride.models';
 
 /**
@@ -82,12 +86,20 @@ export function createTelemetry(overrides: Partial<RideTelemetry> = {}): RideTel
   return {
     state: 'idle',
     availableTransitions: [],
-    mill: { power: 0, direction: 'forward', speedRpm: 0 },
+    mill: {
+      power: 0,
+      direction: 'forward',
+      speedRpm: 0,
+      crownLight: fixtureLight(0, LIGHT_RATINGS.millCrown),
+      armLights: fixtureLights(undefined, HUB_COUNT, LIGHT_RATINGS.millArm),
+    },
     hubs: Array.from({ length: HUB_COUNT }, (_, i) => ({
       id: i + 1,
       power: 0,
       direction: 'forward' as const,
       speedRpm: 0,
+      light: fixtureLight(0, LIGHT_RATINGS.hub),
+      armLights: fixtureLights(undefined, GONDOLAS_PER_HUB, LIGHT_RATINGS.hubArm),
     })),
     gondolas: createGondolas(),
     gondolaBrakeEngaged: false,
@@ -110,6 +122,12 @@ export function createGondolas(occupiedGondolas = 0, unsecuredSeat = false): Gon
       }
       return { id: s + 1, state, occupiedKg: occupied ? FIXTURE_SEAT_KG : 0 };
     });
-    return { id: g + 1, seats, gForce: { vertical: 0, lateral: 0 }, angleDegrees: 0 };
+    return {
+      id: g + 1,
+      seats,
+      gForce: { vertical: 0, lateral: 0 },
+      angleDegrees: 0,
+      light: fixtureLight(0, LIGHT_RATINGS.gondola),
+    };
   });
 }

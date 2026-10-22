@@ -4,10 +4,12 @@ import { interval } from 'rxjs';
 
 import { RideTelemetrySource } from './ride-telemetry-source';
 import {
+  FixtureLight,
   GONDOLAS_PER_HUB,
   GONDOLA_COUNT,
   Gondola,
   HUB_COUNT,
+  LIGHT_RATINGS,
   MotorDirection,
   RideCommand,
   RideState,
@@ -15,6 +17,7 @@ import {
   SEATS_PER_GONDOLA,
   Seat,
   clampPower,
+  fixtureLight,
 } from '../models/ride.models';
 
 /** How often the simulator advances its values, in milliseconds. */
@@ -34,6 +37,22 @@ const MIN_SEAT_KG = 30;
 
 /** Heaviest plausible occupied-seat load, in kg. */
 const MAX_SEAT_KG = 150;
+
+/** The ride's maximum allowed G; mirrors the backend's `RideParameters.MaxGForce`. */
+const MAX_G_FORCE = 4.5;
+
+/** Share of its rating a fixture glows at; mirrors `RideParameters.LightGlowFraction`. */
+const LIGHT_GLOW_FRACTION = 0.15;
+
+/**
+ * A fixture's light for a given G `intensity` in `[0, 1]`, following the
+ * backend's lighting model (`docs/06-ride-lighting.md`) without its smoothing:
+ * dark while idle, glow plus the scaled intensity while running.
+ */
+function simulatedLight(running: boolean, intensity: number, rating: number): FixtureLight {
+  const level = running ? LIGHT_GLOW_FRACTION + (1 - LIGHT_GLOW_FRACTION) * intensity : 0;
+  return fixtureLight(level * rating, rating);
+}
 
 interface CommandState {
   millPower: number;
@@ -155,9 +174,15 @@ export class SimulatedRideTelemetrySource implements RideTelemetrySource {
   }
 
   private buildTelemetry(): RideTelemetry {
-    const gondolas = this.buildGondolas();
+    const state = this.deriveState();
+    const running = state === 'started';
+    const intensities = this.gondolaIntensities();
+    const gondolas = this.buildGondolas(running, intensities);
+    const hubIntensity = (hub: number) =>
+      Math.max(...intensities.slice(hub * GONDOLAS_PER_HUB, (hub + 1) * GONDOLAS_PER_HUB));
+
     return {
-      state: this.deriveState(),
+      state,
       // The simulator drives physics only; lifecycle transitions are
       // server-authoritative via `RideLifecycleService`.
       availableTransitions: [],
@@ -165,12 +190,20 @@ export class SimulatedRideTelemetrySource implements RideTelemetrySource {
         power: this.commands.millPower,
         direction: this.commands.millDirection,
         speedRpm: round(this.millSpeed, 2),
+        crownLight: simulatedLight(running, Math.max(...intensities), LIGHT_RATINGS.millCrown),
+        armLights: Array.from({ length: HUB_COUNT }, (_, hub) =>
+          simulatedLight(running, hubIntensity(hub), LIGHT_RATINGS.millArm),
+        ),
       },
       hubs: this.hubSpeeds.map((speed, index) => ({
         id: index + 1,
         power: this.commands.hubPower,
         direction: this.commands.hubDirection,
         speedRpm: round(speed, 2),
+        light: simulatedLight(running, hubIntensity(index), LIGHT_RATINGS.hub),
+        armLights: Array.from({ length: GONDOLAS_PER_HUB }, (_, j) =>
+          simulatedLight(running, intensities[index * GONDOLAS_PER_HUB + j], LIGHT_RATINGS.hubArm),
+        ),
       })),
       gondolas,
       gondolaBrakeEngaged: this.commands.gondolaBrakeEngaged,
@@ -178,7 +211,30 @@ export class SimulatedRideTelemetrySource implements RideTelemetrySource {
     };
   }
 
-  private buildGondolas(): Gondola[] {
+  /** Each gondola's G as a share of the ride's maximum, in `[0, 1]`. */
+  private gondolaIntensities(): number[] {
+    return Array.from({ length: GONDOLA_COUNT }, (_, g) => {
+      const { vertical, lateral } = this.gondolaGForce(g);
+      return Math.min(1, Math.hypot(vertical, lateral) / MAX_G_FORCE);
+    });
+  }
+
+  /**
+   * Signs alternate per gondola and follow the motor directions so the panels
+   * show both push-back/push-forward and left/right forces. Each gondola takes
+   * the speed of the hub it is mounted on.
+   */
+  private gondolaGForce(g: number): { vertical: number; lateral: number } {
+    const hubSpeed = this.hubSpeeds[Math.floor(g / GONDOLAS_PER_HUB)];
+    const verticalSign = this.commands.hubDirection === 'forward' ? 1 : -1;
+    const lateralSign = g % 2 === 0 ? 1 : -1;
+    return {
+      vertical: (hubSpeed / MAX_HUB_RPM) * 3 * verticalSign,
+      lateral: (this.millSpeed / MAX_MILL_RPM) * 1.5 * lateralSign,
+    };
+  }
+
+  private buildGondolas(running: boolean, intensities: readonly number[]): Gondola[] {
     const gondolas: Gondola[] = [];
     for (let g = 0; g < GONDOLA_COUNT; g++) {
       const seats: Seat[] = [];
@@ -190,14 +246,7 @@ export class SimulatedRideTelemetrySource implements RideTelemetrySource {
           occupiedKg: this.seatWeightsKg[seatIndex],
         });
       }
-      // Signs alternate per gondola and follow the motor directions so the
-      // panels show both push-back/push-forward and left/right forces. Each
-      // gondola takes the speed of the hub it is mounted on.
-      const hubSpeed = this.hubSpeeds[Math.floor(g / GONDOLAS_PER_HUB)];
-      const verticalSign = this.commands.hubDirection === 'forward' ? 1 : -1;
-      const lateralSign = g % 2 === 0 ? 1 : -1;
-      const vertical = (hubSpeed / MAX_HUB_RPM) * 3 * verticalSign;
-      const lateral = (this.millSpeed / MAX_MILL_RPM) * 1.5 * lateralSign;
+      const { vertical, lateral } = this.gondolaGForce(g);
       gondolas.push({
         id: g + 1,
         seats,
@@ -205,6 +254,7 @@ export class SimulatedRideTelemetrySource implements RideTelemetrySource {
         // Even angular spacing around the hub; not animated by the
         // simulator, which only drives the 3D rig from motor speed.
         angleDegrees: round((g % GONDOLAS_PER_HUB) * (360 / GONDOLAS_PER_HUB), 1),
+        light: simulatedLight(running, intensities[g], LIGHT_RATINGS.gondola),
       });
     }
     return gondolas;

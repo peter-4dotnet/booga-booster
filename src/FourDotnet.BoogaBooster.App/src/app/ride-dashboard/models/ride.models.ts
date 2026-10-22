@@ -72,28 +72,87 @@ export interface GForce {
   readonly lateral: number;
 }
 
-/** The central mill motor and its sensed rotation speed. */
+/**
+ * Rated (maximum) output of each light fixture type, in lumens. Mirrors the
+ * backend's `RideParameters.*LightRatedLumens` (see `docs/06-ride-lighting.md`)
+ * — **must stay in sync**. Ratings are constants, so they are not streamed.
+ */
+export const LIGHT_RATINGS = {
+  millCrown: 5000,
+  millArm: 4000,
+  hub: 2500,
+  hubArm: 2500,
+  gondola: 1000,
+} as const;
+
+/** Combined rated output of all 41 fixtures of the light rig, in lumens (87 000 lm). */
+export const LIGHT_RIG_RATED_LUMENS =
+  LIGHT_RATINGS.millCrown +
+  HUB_COUNT * (LIGHT_RATINGS.millArm + LIGHT_RATINGS.hub) +
+  GONDOLA_COUNT * (LIGHT_RATINGS.hubArm + LIGHT_RATINGS.gondola);
+
+/** The current output of one light fixture. */
+export interface FixtureLight {
+  /** Output in lumens, from 0 up to the fixture's rating. */
+  readonly lumens: number;
+  /** Output as a share of the fixture's rating, in `[0, 1]`. */
+  readonly level: number;
+}
+
+/**
+ * A fixture's light from its reported `lumens` and its `rating`: `level` is
+ * `lumens / rating`, clamped into `[0, 1]`. A missing or non-finite value
+ * (an older frame) reads as dark.
+ */
+export function fixtureLight(lumens: number | undefined, rating: number): FixtureLight {
+  const value = Number.isFinite(lumens) ? Math.min(rating, Math.max(0, lumens as number)) : 0;
+  return { lumens: value, level: value / rating };
+}
+
+/**
+ * `count` fixture lights of one `rating`, taking each output from `lumens` by
+ * index; missing entries (or a missing list) read as dark.
+ */
+export function fixtureLights(
+  lumens: readonly number[] | undefined,
+  count: number,
+  rating: number,
+): FixtureLight[] {
+  return Array.from({ length: count }, (_, i) => fixtureLight(lumens?.[i], rating));
+}
+
+/** The central mill motor, its sensed rotation speed and its light fixtures. */
 export interface Mill {
   readonly power: number;
   readonly direction: MotorDirection;
   readonly speedRpm: number;
+  /** The fixture on the mill's crown. */
+  readonly crownLight: FixtureLight;
+  /** The four mill arm fixtures, ordered by the hub each arm carries. */
+  readonly armLights: readonly FixtureLight[];
 }
 
-/** A single hub carrying one gondola; hub speeds vary with load. */
+/** A single hub carrying four gondolas; hub speeds vary with load. */
 export interface Hub {
   readonly id: number;
   readonly power: number;
   readonly direction: MotorDirection;
   readonly speedRpm: number;
+  /** The hub's own fixture. */
+  readonly light: FixtureLight;
+  /** The hub's four arm fixtures, ordered by the gondola each arm carries. */
+  readonly armLights: readonly FixtureLight[];
 }
 
-/** A gondola: the seats it carries and the g-forces it is experiencing. */
+/** A gondola: the seats it carries, the g-forces it is experiencing and its light. */
 export interface Gondola {
   readonly id: number;
   readonly seats: readonly Seat[];
   readonly gForce: GForce;
   /** Current angular position of the gondola around its hub, in degrees. */
   readonly angleDegrees: number;
+  /** The gondola's own fixture. */
+  readonly light: FixtureLight;
 }
 
 /** A full snapshot of ride telemetry. */
@@ -164,6 +223,10 @@ export interface RideTelemetryMillStreamDto {
   readonly imbalanceMillimeters: number;
   readonly isBalanced: boolean;
   readonly isOverloaded: boolean;
+  /** Mill crown fixture output, in lumens. Absent on frames from before the light rig. */
+  readonly crownLightLumens?: number;
+  /** Mill arm fixture outputs, in lumens, by hub index. Absent on older frames. */
+  readonly armLightLumens?: readonly number[];
 }
 
 /**
@@ -176,6 +239,10 @@ export interface RideTelemetryHubStreamDto {
   readonly rpm: number;
   readonly direction: number | string;
   readonly loadKg: number;
+  /** Hub fixture output, in lumens. Absent on frames from before the light rig. */
+  readonly lightLumens?: number;
+  /** Hub arm fixture outputs, in lumens, by gondola index. Absent on older frames. */
+  readonly armLightLumens?: readonly number[];
 }
 
 /**
@@ -209,6 +276,8 @@ export interface RideTelemetryGondolaStreamDto {
   readonly loadKg: number;
   readonly isSafeToDispatch: boolean;
   readonly seats: readonly RideTelemetrySeatStreamDto[];
+  /** Gondola fixture output, in lumens. Absent on frames from before the light rig. */
+  readonly lightLumens?: number;
 }
 
 /**
@@ -335,6 +404,7 @@ export function mapRideTelemetry(dto: RideTelemetryStreamDto): RideTelemetry {
       occupiedKg: round(seat.occupiedKg),
       state: seatState(seat.occupiedKg, seat.restraint, seat.isOccupied, seat.isSecured),
     })),
+    light: fixtureLight(gondola.lightLumens, LIGHT_RATINGS.gondola),
   }));
 
   // Prefer the backend's own tally; fall back to counting non-empty seats
@@ -354,12 +424,17 @@ export function mapRideTelemetry(dto: RideTelemetryStreamDto): RideTelemetry {
       direction: motorDirection(dto.mill.direction),
       // Signed: negative while the mill runs in reverse.
       speedRpm: round(dto.mill.rpm, 2),
+      // Older frames without the light rig read as a dark rig.
+      crownLight: fixtureLight(dto.mill.crownLightLumens, LIGHT_RATINGS.millCrown),
+      armLights: fixtureLights(dto.mill.armLightLumens, HUB_COUNT, LIGHT_RATINGS.millArm),
     },
     hubs: dto.hubs.map((hub) => ({
       id: hub.index + 1,
       power: fromWatts(hub.powerWatts, HUB_MAX_POWER_WATTS),
       direction: motorDirection(hub.direction),
       speedRpm: round(hub.rpm, 2),
+      light: fixtureLight(hub.lightLumens, LIGHT_RATINGS.hub),
+      armLights: fixtureLights(hub.armLightLumens, GONDOLAS_PER_HUB, LIGHT_RATINGS.hubArm),
     })),
     gondolas,
     boardedPassengerCount,
@@ -469,6 +544,19 @@ export function loadEccentricity(gondolas: readonly Gondola[]): number {
     return 0;
   }
   return Math.sqrt(sumX * sumX + sumY * sumY) / totalWeight;
+}
+
+/** Combined output of all 41 fixtures of the light rig, in lumens. */
+export function totalLightLumens(telemetry: RideTelemetry): number {
+  const sum = (lights: readonly FixtureLight[]) =>
+    lights.reduce((total, light) => total + light.lumens, 0);
+
+  return (
+    telemetry.mill.crownLight.lumens +
+    sum(telemetry.mill.armLights) +
+    telemetry.hubs.reduce((total, hub) => total + hub.light.lumens + sum(hub.armLights), 0) +
+    telemetry.gondolas.reduce((total, gondola) => total + gondola.light.lumens, 0)
+  );
 }
 
 /** Safe only when the load's rotational eccentricity is within tolerance. */
