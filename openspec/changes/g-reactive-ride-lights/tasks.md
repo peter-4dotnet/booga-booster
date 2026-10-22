@@ -26,7 +26,7 @@
 ## 4. Telemetry
 
 - [x] 4.1 Append the light fields from design D6 to `MillTelemetry`, `HubTelemetry` and `GondolaTelemetry` and fill them in each `ToTelemetry()`; extend `TelemetryAndCommandTests` and `RideTelemetryStreamTests` to assert all 41 values and their ordering; verify the tests pass
-- [ ] 4.2 Run `dotnet test BoogaBooster.slnx` and the `test-coverage` skill on `FourDotnet.BoogaBooster.DigitalTwin`; verify the suite is green and line coverage is ≥ 80 % and not lower than before
+- [x] 4.2 Run `dotnet test BoogaBooster.slnx` and the `test-coverage` skill on `FourDotnet.BoogaBooster.DigitalTwin`; verify the suite is green and line coverage is ≥ 80 % and not lower than before
 
 ## 5. Frontend models
 

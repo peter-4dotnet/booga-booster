@@ -136,7 +136,7 @@ public sealed class RideTelemetryStreamTests
         var clock = new FakeTimeProvider();
         var stream = new RideTelemetryStream(store, clock);
 
-        await using var frames = stream.Stream(CancellationToken.None).GetAsyncEnumerator();
+        await using var frames = stream.Stream(TestContext.Current.CancellationToken).GetAsyncEnumerator();
         Assert.True(await frames.MoveNextAsync());
 
         var frame = frames.Current;
