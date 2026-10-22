@@ -27,6 +27,7 @@ rotating bodies** and **32 seats**.
 | 3 | [03-motor-power-and-torque.md](03-motor-power-and-torque.md) | Engine power → torque curve, friction, aerodynamic drag, terminal speed |
 | 4 | [04-passive-cart-dynamics.md](04-passive-cart-dynamics.md) | The free-spinning carts as driven pendulums; why seating changes everything |
 | 5 | [05-forces-and-g-forces.md](05-forces-and-g-forces.md) | Nested-frame kinematics, centripetal superposition, the G-force beat, imbalance |
+| 6 | [06-ride-lighting.md](06-ride-lighting.md) | The G-reactive light rig: fixtures and ratings, intensity, propagation, lifecycle floors, the flash-safe envelope |
 
 ## Notation & units
 
