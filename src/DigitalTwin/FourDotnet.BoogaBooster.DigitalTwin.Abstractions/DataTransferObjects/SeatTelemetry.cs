@@ -1,4 +1,4 @@
-namespace FourDotnet.BoogaBooster.DigitalTwin.Abstractions;
+namespace FourDotnet.BoogaBooster.DigitalTwin.Abstractions.DataTransferObjects;
 
 /// <summary>
 /// The live reading of a single seat's sensors: which seat it is, how much weight

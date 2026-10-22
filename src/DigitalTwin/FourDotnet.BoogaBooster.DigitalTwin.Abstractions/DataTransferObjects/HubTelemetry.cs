@@ -1,4 +1,4 @@
-namespace FourDotnet.BoogaBooster.DigitalTwin.Abstractions;
+namespace FourDotnet.BoogaBooster.DigitalTwin.Abstractions.DataTransferObjects;
 
 /// <summary>
 /// The live telemetry a motor-driven hub emits. All four hubs receive the same
