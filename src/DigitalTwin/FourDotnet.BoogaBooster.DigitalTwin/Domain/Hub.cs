@@ -13,6 +13,8 @@ namespace FourDotnet.BoogaBooster.DigitalTwin.Domain;
 public sealed class Hub : DomainModel
 {
     private readonly Gondola[] _gondolas;
+    private readonly Light _light = new(LightRating.Hub);
+    private readonly Light[] _armLights;
     private EnginePower _power = EnginePower.Off;
     private MotorDirection _direction = MotorDirection.Forward;
     private double _angle;
@@ -28,9 +30,11 @@ public sealed class Hub : DomainModel
 
         Index = index;
         _gondolas = new Gondola[RideParameters.GondolasPerHub];
+        _armLights = new Light[RideParameters.GondolasPerHub];
         for (var j = 0; j < _gondolas.Length; j++)
         {
             _gondolas[j] = new Gondola(index, j);
+            _armLights[j] = new Light(LightRating.HubArm);
         }
     }
 
@@ -51,6 +55,30 @@ public sealed class Hub : DomainModel
 
     /// <summary>The four gondolas on this hub.</summary>
     public IReadOnlyList<Gondola> Gondolas => _gondolas;
+
+    /// <summary>The hub's own light fixture.</summary>
+    public Light Light => _light;
+
+    /// <summary>The four hub arm fixtures, indexed by the gondola each arm carries.</summary>
+    public IReadOnlyList<Light> ArmLights => _armLights;
+
+    /// <summary>
+    /// The highest intensity among the hub's gondolas — the hardest-hit gondola sets
+    /// the hub's light (<c>docs/06-ride-lighting.md</c> §6.3).
+    /// </summary>
+    public double Intensity
+    {
+        get
+        {
+            var max = 0d;
+            foreach (var gondola in _gondolas)
+            {
+                max = Math.Max(max, gondola.Intensity);
+            }
+
+            return max;
+        }
+    }
 
     /// <summary>Total gondola + passenger mass carried by the hub (its "load weight").</summary>
     public double LoadKg
@@ -189,6 +217,22 @@ public sealed class Hub : DomainModel
         foreach (var gondola in _gondolas)
         {
             gondola.AdvancePhysics(millAngle, millOmega, _angle, _omega, dt);
+        }
+    }
+
+    /// <summary>
+    /// Advances the hub's light, its four arm lights and its gondolas' lights by
+    /// <paramref name="dt"/> seconds in <paramref name="mode"/>. The hub light follows
+    /// the hub's intensity; each arm light follows the gondola it carries.
+    /// </summary>
+    public void AdvanceLights(LightingMode mode, double dt)
+    {
+        _light.Advance(mode.TargetLevel(Intensity), dt);
+
+        for (var j = 0; j < _gondolas.Length; j++)
+        {
+            _armLights[j].Advance(mode.TargetLevel(_gondolas[j].Intensity), dt);
+            _gondolas[j].AdvanceLights(mode, dt);
         }
     }
 

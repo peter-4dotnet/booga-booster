@@ -185,6 +185,10 @@ public sealed class Gondola : DomainModel
         _angle = RotationalDynamics.Wrap(_angle + (_omega * dt));
     }
 
+    /// <summary>Advances the gondola's light by <paramref name="dt"/> seconds towards its target in <paramref name="mode"/>.</summary>
+    public void AdvanceLights(LightingMode mode, double dt) =>
+        _light.Advance(mode.TargetLevel(Intensity), dt);
+
     /// <summary>Projects the gondola's state and sensors onto the telemetry DTO.</summary>
     public GondolaTelemetry ToTelemetry() => new(
         HubIndex,
