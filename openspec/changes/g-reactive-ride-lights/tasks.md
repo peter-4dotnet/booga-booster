@@ -13,7 +13,7 @@
 
 - [x] 2.1 Add the lighting constants to `RideParameters` (ratings per type, `LightGlowFraction`, `LightAttackSeconds`, `LightDecaySeconds`), each with an XML doc pointing to `docs/06-ride-lighting.md`; verify the build is green
 - [x] 2.2 Add the `LightRating` value object with validation, plus `LightRatingTests`; verify the tests pass
-- [ ] 2.3 Add `Light` with `Level`, `Lumens` and `Advance(targetLevel, dt)` per design D1 and D4, plus `LightTests` (rise faster than fall, time constants, no overshoot, bounds, argument validation); verify the tests pass
+- [x] 2.3 Add `Light` with `Level`, `Lumens` and `Advance(targetLevel, dt)` per design D1 and D4, plus `LightTests` (rise faster than fall, time constants, no overshoot, bounds, argument validation); verify the tests pass
 - [ ] 2.4 Add `LightFlashSafetyTests`: a square-wave target sweep from 0.25 to 30 Hz at 1/120 s, asserting ≤ 3 flashes in any one-second window; verify the test passes, and that it fails if `LightDecaySeconds` is temporarily set to 0.3
 
 ## 3. Rig on the ride parts
