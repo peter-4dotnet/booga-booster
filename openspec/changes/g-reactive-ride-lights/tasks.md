@@ -35,7 +35,7 @@
 
 ## 6. Visualization
 
-- [ ] 6.1 Give each of the 41 fixture meshes in `ride-visualization.ts` its own emissive material driven by its fixture's `level` per frame (design D8), keeping the canvas `aria-hidden`; extend `ride-visualization.spec.ts` to assert the material intensities follow a frame; verify the spec passes
+- [x] 6.1 Give each of the 41 fixture meshes in `ride-visualization.ts` its own emissive material driven by its fixture's `level` per frame (design D8), keeping the canvas `aria-hidden`; extend `ride-visualization.spec.ts` to assert the material intensities follow a frame; verify the spec passes
 
 ## 7. Ride lights panel (first PrimeNG component)
 
