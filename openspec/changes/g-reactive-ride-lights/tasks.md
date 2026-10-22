@@ -18,7 +18,7 @@
 
 ## 3. Rig on the ride parts
 
-- [ ] 3.1 Add `Gondola.Intensity` (combined horizontal G / `MaxGForce`, clamped) and its own `Light`, plus `GondolaIntensityTests` for the spec's half-G, beyond-max and combined-axes scenarios; verify the tests pass
+- [x] 3.1 Add `Gondola.Intensity` (combined horizontal G / `MaxGForce`, clamped) and its own `Light`, plus `GondolaIntensityTests` for the spec's half-G, beyond-max and combined-axes scenarios; verify the tests pass
 - [ ] 3.2 Add the `LightingMode` enum (`Off`, `Glow`, `Reactive`) and the target-level function from design D3, with tests for each mode; verify the tests pass
 - [ ] 3.3 Give `Hub` its own `Light` and 4 `ArmLights` plus `Hub.Intensity` (max of its gondolas), and `GreatMill` its `CrownLight` and 4 `ArmLights` plus `Intensity`; add `AdvanceLights(mode, dt)` down the tree per design D5, with tests for 41 fixtures and max propagation (the spec's "one hard-hit gondola" and "crown follows" scenarios); verify the tests pass
 - [ ] 3.4 Call `_mill.AdvanceLights(...)` as the last step of `Ride.Advance` in every state, and add `RideLightingTests` (settled 0 lm idle, 150/750 lm loading, 575 lm at intensity 0.5 when started, emergency stop reactive, gradual fade on `Offloading → Idle`, deterministic replay); verify the tests pass and the existing physics tests stay green

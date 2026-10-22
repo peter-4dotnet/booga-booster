@@ -17,6 +17,7 @@ public sealed class Gondola : DomainModel
 
     private readonly Seat _left = new(SeatPosition.Left);
     private readonly Seat _right = new(SeatPosition.Right);
+    private readonly Light _light = new(LightRating.Gondola);
 
     private GondolaBrakeState _brake = GondolaBrakeState.Engaged;
     private double _angle;       // θ_cart relative to the hub arm (rad)
@@ -66,6 +67,17 @@ public sealed class Gondola : DomainModel
 
     /// <summary>Fore/aft specific force felt by riders (g). Updated each physics tick.</summary>
     public double ForwardG => _forwardG;
+
+    /// <summary>
+    /// How hard the ride is working this gondola's riders: the felt horizontal G
+    /// (forward and lateral combined) as a share of <see cref="RideParameters.MaxGForce"/>,
+    /// clamped to [0, 1] (<c>docs/06-ride-lighting.md</c> §6.2).
+    /// </summary>
+    public double Intensity =>
+        Math.Clamp(double.Hypot(_forwardG, _lateralG) / RideParameters.MaxGForce, 0d, 1d);
+
+    /// <summary>The gondola's own light fixture.</summary>
+    public Light Light => _light;
 
     /// <summary>Total measured passenger weight in the gondola.</summary>
     public double PassengerLoadKg => _left.OccupiedKg + _right.OccupiedKg;
@@ -208,8 +220,22 @@ public sealed class Gondola : DomainModel
         var forwardHat = PlanarVector.FromAngle(worldFacing);
         var lateralHat = PlanarVector.FromAngle(worldFacing + HalfPi);
 
-        _forwardG = specific.Dot(forwardHat) / RideParameters.Gravity;
-        _lateralG = specific.Dot(lateralHat) / RideParameters.Gravity;
+        SetGForces(
+            specific.Dot(forwardHat) / RideParameters.Gravity,
+            specific.Dot(lateralHat) / RideParameters.Gravity);
+    }
+
+    /// <summary>Records the forward and lateral G the riders feel (validated: both finite).</summary>
+    /// <exception cref="DomainValidationException">Either value is not a finite number.</exception>
+    internal void SetGForces(double forwardG, double lateralG)
+    {
+        if (!double.IsFinite(forwardG) || !double.IsFinite(lateralG))
+        {
+            throw new DomainValidationException("Felt G-forces must be finite numbers.");
+        }
+
+        _forwardG = forwardG;
+        _lateralG = lateralG;
     }
 
     /// <summary>
