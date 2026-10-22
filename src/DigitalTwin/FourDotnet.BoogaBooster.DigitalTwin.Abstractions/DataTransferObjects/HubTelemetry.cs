@@ -13,9 +13,16 @@ namespace FourDotnet.BoogaBooster.DigitalTwin.Abstractions.DataTransferObjects;
 /// </param>
 /// <param name="Direction">The commanded rotation direction (Forward or Reverse).</param>
 /// <param name="LoadKg">Total measured passenger + gondola load carried by the hub.</param>
+/// <param name="LightLumens">Current output of the hub's light fixture, in lumens.</param>
+/// <param name="ArmLightLumens">
+/// Current output of the hub's four arm light fixtures, in lumens, ordered by the
+/// index of the gondola each arm carries.
+/// </param>
 public sealed record HubTelemetry(
     int Index,
     double PowerWatts,
     double Rpm,
     MotorDirection Direction,
-    double LoadKg);
+    double LoadKg,
+    double LightLumens,
+    IReadOnlyList<double> ArmLightLumens);

@@ -29,6 +29,18 @@ public sealed class Light
     /// <summary>The current output (lm), between 0 and the rating.</summary>
     public double Lumens => _level * Rating.RatedLumens;
 
+    /// <summary>The current outputs (lm) of <paramref name="lights"/>, in order — for telemetry.</summary>
+    internal static double[] LumensOf(IReadOnlyList<Light> lights)
+    {
+        var lumens = new double[lights.Count];
+        for (var i = 0; i < lumens.Length; i++)
+        {
+            lumens[i] = lights[i].Lumens;
+        }
+
+        return lumens;
+    }
+
     /// <summary>
     /// Advances the envelope by <paramref name="dt"/> seconds towards
     /// <paramref name="targetLevel"/>. The step is the exact solution for a target

@@ -278,5 +278,7 @@ public sealed class Hub : DomainModel
         ConsumedPowerWatts,
         RotationalDynamics.ToRpm(_omega),
         _direction,
-        LoadKg);
+        LoadKg,
+        _light.Lumens,
+        Light.LumensOf(_armLights));
 }

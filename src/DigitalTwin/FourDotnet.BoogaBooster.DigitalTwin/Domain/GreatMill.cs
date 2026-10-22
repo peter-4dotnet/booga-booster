@@ -441,5 +441,7 @@ public sealed class GreatMill : DomainModel
         PassengerLoadKg,
         ImbalanceMillimeters,
         IsBalanced,
-        IsOverloaded);
+        IsOverloaded,
+        _crownLight.Lumens,
+        Light.LumensOf(_armLights));
 }

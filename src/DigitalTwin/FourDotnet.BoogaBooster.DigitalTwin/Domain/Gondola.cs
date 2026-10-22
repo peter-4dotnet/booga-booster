@@ -200,7 +200,8 @@ public sealed class Gondola : DomainModel
         _forwardG,
         PassengerLoadKg,
         IsSafeToDispatch,
-        [_left.ToTelemetry(), _right.ToTelemetry()]);
+        [_left.ToTelemetry(), _right.ToTelemetry()],
+        _light.Lumens);
 
     /// <summary>
     /// The world direction the gondola's back (its centre of mass) currently points.
