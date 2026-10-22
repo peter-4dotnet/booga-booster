@@ -1,5 +1,6 @@
 using FourDotnet.BoogaBooster.Core;
 using FourDotnet.BoogaBooster.DigitalTwin.Abstractions;
+using FourDotnet.BoogaBooster.DigitalTwin.Abstractions.DataTransferObjects;
 
 namespace FourDotnet.BoogaBooster.DigitalTwin.Domain;
 

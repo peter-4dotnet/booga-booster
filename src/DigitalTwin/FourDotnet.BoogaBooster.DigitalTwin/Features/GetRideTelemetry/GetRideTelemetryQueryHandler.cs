@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using FourDotnet.BoogaBooster.Core.Cqrs;
-using FourDotnet.BoogaBooster.DigitalTwin.Abstractions;
+using FourDotnet.BoogaBooster.DigitalTwin.Abstractions.DataTransferObjects;
 using FourDotnet.BoogaBooster.DigitalTwin.Application;
 using FourDotnet.BoogaBooster.DigitalTwin.Observability;
 

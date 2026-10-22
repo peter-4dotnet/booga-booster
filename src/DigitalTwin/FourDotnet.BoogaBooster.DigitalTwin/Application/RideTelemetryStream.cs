@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using FourDotnet.BoogaBooster.DigitalTwin.Abstractions;
+using FourDotnet.BoogaBooster.DigitalTwin.Abstractions.DataTransferObjects;
 using FourDotnet.BoogaBooster.DigitalTwin.Domain;
 
 namespace FourDotnet.BoogaBooster.DigitalTwin.Application;

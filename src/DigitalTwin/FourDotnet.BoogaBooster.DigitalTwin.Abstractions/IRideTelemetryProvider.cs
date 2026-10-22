@@ -1,3 +1,5 @@
+using FourDotnet.BoogaBooster.DigitalTwin.Abstractions.DataTransferObjects;
+
 namespace FourDotnet.BoogaBooster.DigitalTwin.Abstractions;
 
 /// <summary>

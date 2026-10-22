@@ -1,4 +1,4 @@
-namespace FourDotnet.BoogaBooster.DigitalTwin.Abstractions;
+namespace FourDotnet.BoogaBooster.DigitalTwin.Abstractions.DataTransferObjects;
 
 /// <summary>
 /// The live telemetry a gondola emits while the ride runs. Rotation is emergent —

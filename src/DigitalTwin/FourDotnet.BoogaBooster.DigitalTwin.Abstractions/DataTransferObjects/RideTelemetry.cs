@@ -1,4 +1,4 @@
-namespace FourDotnet.BoogaBooster.DigitalTwin.Abstractions;
+namespace FourDotnet.BoogaBooster.DigitalTwin.Abstractions.DataTransferObjects;
 
 /// <summary>
 /// An immutable snapshot of the whole ride at one instant: the mill, the four
