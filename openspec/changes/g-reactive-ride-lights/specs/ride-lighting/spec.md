@@ -22,12 +22,12 @@ The ride SHALL carry 41 light fixtures: one on the Great Mill crown, one on each
 
 ### Requirement: Fixture ratings per part type
 
-Each fixture SHALL have a rated (maximum) output by part type: gondola 1 000 lm, hub arm 2 500 lm, hub 2 500 lm, mill arm 4 000 lm and mill crown 5 000 lm. The rig's total rated output SHALL therefore be 95 000 lm.
+Each fixture SHALL have a rated (maximum) output by part type: gondola 1 000 lm, hub arm 2 500 lm, hub 2 500 lm, mill arm 4 000 lm and mill crown 5 000 lm. The rig's total rated output SHALL therefore be 87 000 lm.
 
 #### Scenario: Rig at full output
 
 - **WHEN** every fixture is at its rated output
-- **THEN** the rig's combined output is 95 000 lm
+- **THEN** the rig's combined output is 87 000 lm
 
 ### Requirement: Gondola intensity follows the felt G-force
 

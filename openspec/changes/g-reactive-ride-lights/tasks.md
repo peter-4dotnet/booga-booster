@@ -2,12 +2,12 @@
 
 ## 0. Preconditions
 
-- [ ] 0.1 Confirm `telemetry-dto-layout` is merged into `development` and the telemetry records live in `DigitalTwin.Abstractions/DataTransferObjects/`, by checking that the folder exists on the branch base
+- [x] 0.1 Confirm `telemetry-dto-layout` is merged into `development` and the telemetry records live in `DigitalTwin.Abstractions/DataTransferObjects/`, by checking that the folder exists on the branch base
 
 ## 1. Lighting specification docs
 
 - [ ] 1.1 Write `docs/06-ride-lighting.md`: fixtures and ratings, gondola intensity, max propagation, lifecycle floors, the asymmetric envelope, and the flash-safety derivation (D4 sweep result); verify it is linked from `docs/README.md`
-- [ ] 1.2 Add a "Lighting" table to `docs/appendix-parameters.md` (five ratings, glow fraction 0.15, attack 0.1 s, decay 0.8 s, total 95 000 lm, with a sanity check); verify the values match the doc from 1.1
+- [ ] 1.2 Add a "Lighting" table to `docs/appendix-parameters.md` (five ratings, glow fraction 0.15, attack 0.1 s, decay 0.8 s, total 87 000 lm, with a sanity check); verify the values match the doc from 1.1
 
 ## 2. Light domain type
 
@@ -30,7 +30,7 @@
 
 ## 5. Frontend models
 
-- [ ] 5.1 Extend the stream DTO interfaces and mapping in `ride.models.ts` with the light fields, and add a `LIGHT_RATINGS` constant; extend `ride.models.spec.ts` for the mapping, `level = lumens / rating`, and the 95 000 lm total; verify `npx vitest run src/app/ride-dashboard/models/ride.models.spec.ts` passes
+- [ ] 5.1 Extend the stream DTO interfaces and mapping in `ride.models.ts` with the light fields, and add a `LIGHT_RATINGS` constant; extend `ride.models.spec.ts` for the mapping, `level = lumens / rating`, and the 87 000 lm total; verify `npx vitest run src/app/ride-dashboard/models/ride.models.spec.ts` passes
 - [ ] 5.2 Update the simulated and fake telemetry sources to produce light values, so dev mode and existing specs keep working; verify the existing frontend specs pass
 
 ## 6. Visualization
