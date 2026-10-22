@@ -57,6 +57,29 @@ toward Coulomb/viscous friction (which govern the low-speed tail) over aerodynam
 
 Units: `C_coulomb` in N·m, `C_viscous` in N·m·s/rad, `k_aero` in N·m·s²/rad².
 
+## Lighting
+
+The G-reactive light rig (doc 6). Ratings are per fixture.
+
+| Parameter | Symbol | Default | Unit |
+|-----------|--------|--------:|------|
+| Mill crown rating (×1) | `Φ_crown` | 5,000 | lm |
+| Mill arm rating (×4) | `Φ_millArm` | 4,000 | lm |
+| Hub rating (×4) | `Φ_hub` | 2,500 | lm |
+| Hub arm rating (×16) | `Φ_hubArm` | 2,500 | lm |
+| Gondola rating (×16) | `Φ_gondola` | 1,000 | lm |
+| Glow fraction | `γ` | 0.15 | — |
+| Attack time constant | `τ_attack` | 0.1 | s |
+| Decay time constant | `τ_decay` | 0.8 | s |
+| Rig total rating (41 fixtures) | `Φ_rig` | 87,000 | lm |
+
+**Sanity check.** `5,000 + 4·4,000 + 4·2,500 + 16·2,500 + 16·1,000 = 87,000 lm`. The
+idle rig emits 0 lm; a loading rig settles at its glow, `0.15 · 87,000 = 13,050 lm`
+(150 lm per gondola, 750 lm at the crown); a gondola at half the allowed G while running
+settles at `150 + 0.5 · 850 = 575 lm`. A step rises to 95 % in `3τ_attack = 0.3 s` and
+falls to 95 % in `3τ_decay = 2.4 s`. The worst-case square-wave input produces at most
+**2 flashes per second** (doc 6 §6.6), below the limit of 3.
+
 ## Sanity check
 
 With these parameters, a **full ride** (~2.4 t of carts + people orbiting at 6 m):

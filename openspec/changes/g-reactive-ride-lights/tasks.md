@@ -7,7 +7,7 @@
 ## 1. Lighting specification docs
 
 - [x] 1.1 Write `docs/06-ride-lighting.md`: fixtures and ratings, gondola intensity, max propagation, lifecycle floors, the asymmetric envelope, and the flash-safety derivation (D4 sweep result); verify it is linked from `docs/README.md`
-- [ ] 1.2 Add a "Lighting" table to `docs/appendix-parameters.md` (five ratings, glow fraction 0.15, attack 0.1 s, decay 0.8 s, total 87 000 lm, with a sanity check); verify the values match the doc from 1.1
+- [x] 1.2 Add a "Lighting" table to `docs/appendix-parameters.md` (five ratings, glow fraction 0.15, attack 0.1 s, decay 0.8 s, total 87 000 lm, with a sanity check); verify the values match the doc from 1.1
 
 ## 2. Light domain type
 
