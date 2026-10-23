@@ -32,7 +32,7 @@ function render(telemetry: RideTelemetry) {
 
 /** The progress bar with the given accessible name. */
 function bar(host: HTMLElement, name: string): HTMLElement | null {
-  return host.querySelector(`[role="progressbar"][aria-label="${name}"]`);
+  return host.querySelector(`.bar[role="progressbar"][aria-label="${name}"]`);
 }
 
 /** Normalizes spacing so `2 500 lm` matches however it is grouped. */
@@ -85,7 +85,7 @@ describe('LightsPanel', () => {
     fixture.detectChanges();
 
     expect(hubToggle(host, 1).getAttribute('aria-expanded')).toBe('true');
-    const gondolaBars = host.querySelectorAll('#lights-hub-1 [role="progressbar"]');
+    const gondolaBars = host.querySelectorAll('#lights-hub-1 .bar[role="progressbar"]');
     expect(gondolaBars).toHaveLength(4);
     expect(bar(host, 'Gondola 3 light')?.getAttribute('aria-valuetext')).toBe('300 lm');
     expect(bar(host, 'Gondola 3 light')?.getAttribute('aria-valuenow')).toBe('30');
@@ -118,7 +118,7 @@ describe('LightsPanel', () => {
     fixture.detectChanges();
 
     expect(toggle.getAttribute('aria-expanded')).toBe('true');
-    expect(host.querySelectorAll('#lights-hub-2 [role="progressbar"]')).toHaveLength(4);
+    expect(host.querySelectorAll('#lights-hub-2 .bar[role="progressbar"]')).toHaveLength(4);
   });
 
   it('shows the total output of all 41 fixtures', () => {
@@ -134,7 +134,7 @@ describe('LightsPanel', () => {
     hubToggle(host, 1).click();
     fixture.detectChanges();
 
-    const bars = Array.from(host.querySelectorAll('[role="progressbar"]'));
+    const bars = Array.from(host.querySelectorAll('.bar[role="progressbar"]'));
     expect(bars).toHaveLength(1 + 4 + 4);
     bars.forEach((element) => {
       expect(element.getAttribute('aria-valuenow')).toBe('0');

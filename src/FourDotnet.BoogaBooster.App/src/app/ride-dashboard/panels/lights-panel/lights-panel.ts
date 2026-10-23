@@ -91,14 +91,23 @@ export function formatLumens(lumens: number): string {
       </p>
     </section>
 
+    <!--
+      The wrapper is the accessible progress bar: PrimeNG 22's p-progressbar
+      host-binds an invalid aria-level (a percentage), so it is shown but
+      hidden from assistive technology.
+    -->
     <ng-template #bar let-light let-label="label">
-      <p-progressbar
+      <div
         class="bar"
-        [value]="percent(light)"
-        [showValue]="false"
-        [attr.aria-label]="label"
+        role="progressbar"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        [attr.aria-valuenow]="percent(light)"
         [attr.aria-valuetext]="lumens(light)"
-      />
+        [attr.aria-label]="label"
+      >
+        <p-progressbar [value]="percent(light)" [showValue]="false" aria-hidden="true" />
+      </div>
       <span class="value" aria-hidden="true">{{ lumens(light) }}</span>
     </ng-template>
   `,
