@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 
 import { OperationControls } from './controls/operation-controls';
 import { GondolaPanel } from './panels/gondola-panel/gondola-panel';
+import { LightsPanel } from './panels/lights-panel/lights-panel';
 import { SecurityPanel } from './panels/security-panel/security-panel';
 import { SpeedPanel } from './panels/speed-panel/speed-panel';
 import { StatusSummary } from './panels/status-summary/status-summary';
@@ -28,6 +29,7 @@ import { WeatherPanel } from '../weather/weather-panel/weather-panel';
     GondolaPanel,
     QueuePanel,
     WeatherPanel,
+    LightsPanel,
   ],
   templateUrl: './ride-dashboard.html',
   styleUrl: './ride-dashboard.scss',
