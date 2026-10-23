@@ -547,7 +547,9 @@ export function loadEccentricity(gondolas: readonly Gondola[]): number {
 }
 
 /** Combined output of all 41 fixtures of the light rig, in lumens. */
-export function totalLightLumens(telemetry: RideTelemetry): number {
+export function totalLightLumens(
+  telemetry: Pick<RideTelemetry, 'mill' | 'hubs' | 'gondolas'>,
+): number {
   const sum = (lights: readonly FixtureLight[]) =>
     lights.reduce((total, light) => total + light.lumens, 0);
 

@@ -40,7 +40,7 @@
 ## 7. Ride lights panel (first PrimeNG component)
 
 - [x] 7.1 Consult the `primeng` MCP server (`get_setup`, `get_component` for ProgressBar and the disclosure component), then configure `providePrimeNG` with an `@primeuix/themes` preset in `app.config.ts`; verify the app builds with `npm run build`
-- [ ] 7.2 Build `panels/lights-panel/` (standalone, `OnPush`, `input()` signals): mill and hub rows with `p-progressbar` and lumen labels, expandable hub rows with gondola bars, the total row, and a `Ride lights` region label; add `lights-panel.spec.ts` covering the spec's live-output, expand (mouse and keyboard), total and dark-ride scenarios; verify the spec passes
+- [x] 7.2 Build `panels/lights-panel/` (standalone, `OnPush`, `input()` signals): mill and hub rows with `p-progressbar` and lumen labels, expandable hub rows with gondola bars, the total row, and a `Ride lights` region label; add `lights-panel.spec.ts` covering the spec's live-output, expand (mouse and keyboard), total and dark-ride scenarios; verify the spec passes
 - [ ] 7.3 Add `lights-panel.a11y.spec.ts` (axe, WCAG AA: accessible names with "lm", the expanded state exposed); verify it reports no violations, and run `primeng` `validate_usage` on the template
 - [ ] 7.4 Place the panel at the bottom of the left rail in `ride-dashboard.html`, and extend `ride-dashboard.a11y.spec.ts`; verify the dashboard axe spec still reports no violations
 
