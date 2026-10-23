@@ -135,7 +135,7 @@ This runs in every state, including `Idle`, so the rig fades to dark after offlo
 New members are appended at the end of each positional record, so existing JSON
 properties are untouched. Ratings are not streamed: they are constants, mirrored in a
 frontend `LIGHT_RATINGS` constant next to the telemetry models, with a test asserting
-the 95 000 lm total, as the spec requires.
+the 87 000 lm total, as the spec requires.
 
 ### D7. Testing (xUnit v3, no FluentAssertions)
 

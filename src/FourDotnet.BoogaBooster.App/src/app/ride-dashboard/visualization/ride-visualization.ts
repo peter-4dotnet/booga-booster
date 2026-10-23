@@ -11,7 +11,14 @@ import {
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
-import { MotorDirection } from '../models/ride.models';
+import {
+  GONDOLAS_PER_HUB,
+  Gondola,
+  HUB_COUNT,
+  Hub,
+  Mill,
+  MotorDirection,
+} from '../models/ride.models';
 
 /** Ride geometry (metres) — mirrors the reference model's parameter set. */
 const P = {
@@ -81,7 +88,95 @@ export function podFreeAngle(comboA: number, phase: number): number {
   return -comboA + Math.sin(comboA + phase);
 }
 
-interface GondolaNode {
+/** Warm white the light fixtures glow in. */
+export const LIGHT_EMISSIVE_COLOR = 0xffd9a0;
+
+/** The rig colour of each fixture-carrying part. */
+const PART_COLORS = {
+  crown: 0x8d9096,
+  millArm: 0xe6b826,
+  hub: 0x347ad9,
+  hubArm: 0xf2d959,
+  gondola: 0x27b374,
+} as const;
+
+/** The light output the visualization renders: one frame of the rig's 41 fixtures. */
+export interface RigLightFrame {
+  readonly mill: Pick<Mill, 'crownLight' | 'armLights'>;
+  readonly hubs: readonly Pick<Hub, 'light' | 'armLights'>[];
+  readonly gondolas: readonly Pick<Gondola, 'id' | 'light'>[];
+}
+
+/**
+ * One material per light fixture, so each fixture can glow on its own. Hub
+ * arms and gondolas are indexed `[hub][gondola on hub]`.
+ */
+export interface RigLightMaterials {
+  readonly crown: THREE.MeshStandardMaterial;
+  readonly millArms: readonly THREE.MeshStandardMaterial[];
+  readonly hubs: readonly THREE.MeshStandardMaterial[];
+  readonly hubArms: readonly (readonly THREE.MeshStandardMaterial[])[];
+  readonly gondolas: readonly (readonly THREE.MeshStandardMaterial[])[];
+}
+
+/** A part material that can glow: its rig colour plus a dark warm-white emissive. */
+function fixtureMaterial(color: number): THREE.MeshStandardMaterial {
+  return new THREE.MeshStandardMaterial({
+    color,
+    roughness: 0.55,
+    metalness: 0.12,
+    emissive: LIGHT_EMISSIVE_COLOR,
+    emissiveIntensity: 0,
+  });
+}
+
+/** A fresh, dark material for each of the rig's 41 fixtures. */
+export function createRigLightMaterials(): RigLightMaterials {
+  const perHub = (color: number) =>
+    Array.from({ length: HUB_COUNT }, () =>
+      Array.from({ length: GONDOLAS_PER_HUB }, () => fixtureMaterial(color)),
+    );
+  return {
+    crown: fixtureMaterial(PART_COLORS.crown),
+    millArms: Array.from({ length: HUB_COUNT }, () => fixtureMaterial(PART_COLORS.millArm)),
+    hubs: Array.from({ length: HUB_COUNT }, () => fixtureMaterial(PART_COLORS.hub)),
+    hubArms: perHub(PART_COLORS.hubArm),
+    gondolas: perHub(PART_COLORS.gondola),
+  };
+}
+
+/** A fixture's glow strength: its level, guarded against a bad frame and clamped to `[0, 1]`. */
+function glow(level: number | undefined): number {
+  return Math.min(1, Math.max(0, finiteOrZero(level ?? 0)));
+}
+
+/**
+ * Sets every fixture material's glow to its fixture's level in `frame`: dark
+ * at 0 lm, full brightness at its rating. Gondolas are placed by their id
+ * (`hub * 4 + gondola + 1`), so the frame's gondola order doesn't matter.
+ */
+export function applyRigLights(materials: RigLightMaterials, frame: RigLightFrame): void {
+  materials.crown.emissiveIntensity = glow(frame.mill.crownLight.level);
+  materials.millArms.forEach((material, h) => {
+    material.emissiveIntensity = glow(frame.mill.armLights[h]?.level);
+  });
+  materials.hubs.forEach((material, h) => {
+    material.emissiveIntensity = glow(frame.hubs[h]?.light.level);
+    materials.hubArms[h].forEach((arm, j) => {
+      arm.emissiveIntensity = glow(frame.hubs[h]?.armLights[j]?.level);
+    });
+  });
+  for (const gondola of frame.gondolas) {
+    const index = gondola.id - 1;
+    const material =
+      materials.gondolas[Math.floor(index / GONDOLAS_PER_HUB)]?.[index % GONDOLAS_PER_HUB];
+    if (material) {
+      material.emissiveIntensity = glow(gondola.light.level);
+    }
+  }
+}
+
+export interface GondolaNode {
   readonly obj: THREE.Object3D;
   readonly phase: number;
   /**
@@ -97,7 +192,9 @@ interface GondolaNode {
  * Central visualization: a live 3D render of the ride — one central mill turning
  * four arms, each carrying a hub that spins four gondolas. The mill and hubs turn
  * at the sensed speed and direction from the operation controls (both can run
- * either way), and the gondola brake holds or frees the pods.
+ * either way), and the gondola brake holds or frees the pods. Every light
+ * fixture — the mill crown, mill arms, hubs, hub arms and gondolas — glows with
+ * its fixture's reported output.
  *
  * Everything shown is duplicated in the text panels, so the canvas is decorative
  * (`aria-hidden`). WebGL setup is guarded so the component degrades to an empty,
@@ -132,6 +229,8 @@ export class RideVisualization {
   readonly hubSpeedRpm = input.required<number>();
   readonly hubDirection = input.required<MotorDirection>();
   readonly gondolaBrakeEngaged = input.required<boolean>();
+  /** The latest output of every light fixture on the rig. */
+  readonly lights = input.required<RigLightFrame>();
 
   private readonly hostRef = viewChild.required<ElementRef<HTMLDivElement>>('host');
   private readonly destroyRef = inject(DestroyRef);
@@ -184,7 +283,9 @@ export class RideVisualization {
     this.addLighting(scene);
     this.addGround(scene);
     this.addStaticStructure(scene);
-    const { mainPivot, hubPivots, gondolas } = this.addRig(scene);
+    const lightMaterials = createRigLightMaterials();
+    const { mainPivot, hubPivots, gondolas } = buildRig(lightMaterials);
+    scene.add(mainPivot);
 
     const reducedMotion =
       typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -224,6 +325,10 @@ export class RideVisualization {
           gondola.obj.rotation.y = finiteOrZero(gondola.obj.rotation.y + delta);
         }
       }
+
+      // Lights follow the latest telemetry frame, not the animation clock, so
+      // they still update under reduced motion.
+      applyRigLights(lightMaterials, this.lights());
 
       controls.update();
       renderer.render(scene, camera);
@@ -299,105 +404,20 @@ export class RideVisualization {
   }
 
   private addStaticStructure(scene: THREE.Scene): void {
-    const mats = this.materials();
-    const base = this.box(P.baseSize, P.baseHeight, P.baseSize, mats.base);
+    const make = (color: number) =>
+      new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0.12 });
+
+    const base = box(P.baseSize, P.baseHeight, P.baseSize, make(0x47474d));
     base.position.y = P.baseHeight / 2;
     scene.add(base);
 
-    const tower = this.cyl(P.towerRadius, P.towerHeight, mats.tower);
+    const tower = cyl(P.towerRadius, P.towerHeight, make(0x8d9096));
     tower.position.y = P.towerHeight / 2;
     scene.add(tower);
 
-    const motor = this.cyl(P.mainMotorR, P.mainMotorH, mats.motor);
+    const motor = cyl(P.mainMotorR, P.mainMotorH, make(0xcc2e2e));
     motor.position.y = ARM_HEIGHT;
     scene.add(motor);
-  }
-
-  private addRig(scene: THREE.Scene): {
-    mainPivot: THREE.Group;
-    hubPivots: THREE.Group[];
-    gondolas: GondolaNode[];
-  } {
-    const mats = this.materials();
-    const mainPivot = new THREE.Group();
-    mainPivot.position.y = ARM_HEIGHT;
-    scene.add(mainPivot);
-
-    const cap = this.cyl(P.mainMotorR * 0.6, 0.35, mats.tower);
-    cap.position.y = P.mainMotorH / 2 + 0.1;
-    mainPivot.add(cap);
-
-    const hubPivots: THREE.Group[] = [];
-    const gondolas: GondolaNode[] = [];
-
-    for (let k = 0; k < 4; k++) {
-      const armHinge = new THREE.Group();
-      armHinge.rotation.y = (k * Math.PI) / 2;
-      mainPivot.add(armHinge);
-
-      const arm = this.box(P.mainArmLen, P.mainArmH, P.mainArmW, mats.arm);
-      arm.position.x = P.mainArmLen / 2;
-      armHinge.add(arm);
-
-      const hubPivot = new THREE.Group();
-      hubPivot.position.x = P.mainArmLen;
-      armHinge.add(hubPivot);
-      hubPivots.push(hubPivot);
-
-      hubPivot.add(this.cyl(P.hubR, P.hubH, mats.hub));
-      const hubCap = this.cyl(P.hubR * 0.6, 0.3, mats.tower);
-      hubCap.position.y = P.hubH / 2 + 0.08;
-      hubPivot.add(hubCap);
-
-      for (let j = 0; j < 4; j++) {
-        const hubArmHinge = new THREE.Group();
-        hubArmHinge.rotation.y = (j * Math.PI) / 2;
-        hubPivot.add(hubArmHinge);
-
-        const hubArm = this.box(P.hubArmLen, P.hubArmH, P.hubArmW, mats.hubArm);
-        hubArm.position.x = P.hubArmLen / 2;
-        hubArmHinge.add(hubArm);
-
-        const gondolaPivot = new THREE.Group();
-        gondolaPivot.position.x = P.hubArmLen;
-        hubArmHinge.add(gondolaPivot);
-
-        const pod = this.box(P.gondolaLen, P.gondolaH, P.gondolaW, mats.gondola);
-        pod.position.y = -P.gondolaDrop;
-        gondolaPivot.add(pod);
-
-        gondolas.push({ obj: gondolaPivot, phase: (k * 4 + j) * 0.7, prevFree: 0 });
-      }
-    }
-
-    return { mainPivot, hubPivots, gondolas };
-  }
-
-  private materials() {
-    const make = (color: number) =>
-      new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0.12 });
-    return {
-      base: make(0x47474d),
-      tower: make(0x8d9096),
-      motor: make(0xcc2e2e),
-      arm: make(0xe6b826),
-      hub: make(0x347ad9),
-      hubArm: make(0xf2d959),
-      gondola: make(0x27b374),
-    };
-  }
-
-  private box(l: number, h: number, w: number, mat: THREE.Material): THREE.Mesh {
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(l, h, w), mat);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    return mesh;
-  }
-
-  private cyl(r: number, h: number, mat: THREE.Material, segments = 32): THREE.Mesh {
-    const mesh = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, segments), mat);
-    mesh.castShadow = true;
-    return mesh;
   }
 
   private disposeScene(scene: THREE.Scene): void {
@@ -412,4 +432,114 @@ export class RideVisualization {
       }
     });
   }
+}
+
+/** The rotating rig: its pivots, its gondola nodes and the meshes that carry a light. */
+export interface Rig {
+  readonly mainPivot: THREE.Group;
+  readonly hubPivots: readonly THREE.Group[];
+  readonly gondolas: GondolaNode[];
+  /** The mesh each light fixture is mounted on, mirroring {@link RigLightMaterials}. */
+  readonly fixtures: {
+    readonly crown: THREE.Mesh;
+    readonly millArms: readonly THREE.Mesh[];
+    readonly hubs: readonly THREE.Mesh[];
+    readonly hubArms: readonly (readonly THREE.Mesh[])[];
+    readonly gondolas: readonly (readonly THREE.Mesh[])[];
+  };
+}
+
+/**
+ * Builds the rotating rig — the mill crown and its four arms, each carrying a hub
+ * with four arms and gondolas — with every light fixture's mesh using its own
+ * material from `lights`. Each fixture mesh hangs under the pivot of the part it
+ * belongs to, so its light turns with that part.
+ */
+export function buildRig(lights: RigLightMaterials): Rig {
+  const capMaterial = new THREE.MeshStandardMaterial({
+    color: PART_COLORS.crown,
+    roughness: 0.55,
+    metalness: 0.12,
+  });
+
+  const mainPivot = new THREE.Group();
+  mainPivot.position.y = ARM_HEIGHT;
+
+  const crown = cyl(P.mainMotorR * 0.6, 0.35, lights.crown);
+  crown.position.y = P.mainMotorH / 2 + 0.1;
+  mainPivot.add(crown);
+
+  const hubPivots: THREE.Group[] = [];
+  const gondolas: GondolaNode[] = [];
+  const millArms: THREE.Mesh[] = [];
+  const hubs: THREE.Mesh[] = [];
+  const hubArms: THREE.Mesh[][] = [];
+  const pods: THREE.Mesh[][] = [];
+
+  for (let k = 0; k < HUB_COUNT; k++) {
+    const armHinge = new THREE.Group();
+    armHinge.rotation.y = (k * Math.PI) / 2;
+    mainPivot.add(armHinge);
+
+    const arm = box(P.mainArmLen, P.mainArmH, P.mainArmW, lights.millArms[k]);
+    arm.position.x = P.mainArmLen / 2;
+    armHinge.add(arm);
+    millArms.push(arm);
+
+    const hubPivot = new THREE.Group();
+    hubPivot.position.x = P.mainArmLen;
+    armHinge.add(hubPivot);
+    hubPivots.push(hubPivot);
+
+    const hub = cyl(P.hubR, P.hubH, lights.hubs[k]);
+    hubPivot.add(hub);
+    hubs.push(hub);
+    const hubCap = cyl(P.hubR * 0.6, 0.3, capMaterial);
+    hubCap.position.y = P.hubH / 2 + 0.08;
+    hubPivot.add(hubCap);
+
+    hubArms.push([]);
+    pods.push([]);
+    for (let j = 0; j < GONDOLAS_PER_HUB; j++) {
+      const hubArmHinge = new THREE.Group();
+      hubArmHinge.rotation.y = (j * Math.PI) / 2;
+      hubPivot.add(hubArmHinge);
+
+      const hubArm = box(P.hubArmLen, P.hubArmH, P.hubArmW, lights.hubArms[k][j]);
+      hubArm.position.x = P.hubArmLen / 2;
+      hubArmHinge.add(hubArm);
+      hubArms[k].push(hubArm);
+
+      const gondolaPivot = new THREE.Group();
+      gondolaPivot.position.x = P.hubArmLen;
+      hubArmHinge.add(gondolaPivot);
+
+      const pod = box(P.gondolaLen, P.gondolaH, P.gondolaW, lights.gondolas[k][j]);
+      pod.position.y = -P.gondolaDrop;
+      gondolaPivot.add(pod);
+      pods[k].push(pod);
+
+      gondolas.push({ obj: gondolaPivot, phase: (k * GONDOLAS_PER_HUB + j) * 0.7, prevFree: 0 });
+    }
+  }
+
+  return {
+    mainPivot,
+    hubPivots,
+    gondolas,
+    fixtures: { crown, millArms, hubs, hubArms, gondolas: pods },
+  };
+}
+
+function box(l: number, h: number, w: number, mat: THREE.Material): THREE.Mesh {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(l, h, w), mat);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  return mesh;
+}
+
+function cyl(r: number, h: number, mat: THREE.Material, segments = 32): THREE.Mesh {
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, segments), mat);
+  mesh.castShadow = true;
+  return mesh;
 }

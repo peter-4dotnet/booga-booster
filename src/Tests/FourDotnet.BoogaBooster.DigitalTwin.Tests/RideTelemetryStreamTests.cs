@@ -128,6 +128,32 @@ public sealed class RideTelemetryStreamTests
         Assert.NotNull(frame.Mill);
     }
 
+    [Fact]
+    public async Task Each_frame_carries_the_output_of_all_41_light_fixtures()
+    {
+        var store = RunningStore();
+        store.Advance(RideParameters.TimeStep);
+        var clock = new FakeTimeProvider();
+        var stream = new RideTelemetryStream(store, clock);
+
+        await using var frames = stream.Stream(TestContext.Current.CancellationToken).GetAsyncEnumerator();
+        Assert.True(await frames.MoveNextAsync());
+
+        var frame = frames.Current;
+        var lumens = new List<double> { frame.Mill.CrownLightLumens };
+        lumens.AddRange(frame.Mill.ArmLightLumens);
+        foreach (var hub in frame.Hubs)
+        {
+            lumens.Add(hub.LightLumens);
+            lumens.AddRange(hub.ArmLightLumens);
+        }
+
+        lumens.AddRange(frame.Gondolas.Select(g => g.LightLumens));
+
+        Assert.Equal(41, lumens.Count);
+        Assert.All(lumens, value => Assert.True(value > 0d, "A started ride's rig is lit."));
+    }
+
     private static RideStore RunningStore()
     {
         var store = new RideStore(new RandomRideEventSampler(seed: 1));

@@ -13,6 +13,8 @@ namespace FourDotnet.BoogaBooster.DigitalTwin.Domain;
 public sealed class GreatMill : DomainModel
 {
     private readonly Hub[] _hubs;
+    private readonly Light _crownLight = new(LightRating.MillCrown);
+    private readonly Light[] _armLights;
     private EnginePower _power = EnginePower.Off;
     private MotorDirection _direction = MotorDirection.Forward;
     private bool _brakesEngaged;
@@ -23,9 +25,11 @@ public sealed class GreatMill : DomainModel
         : base(isNew: true)
     {
         _hubs = new Hub[RideParameters.HubCount];
+        _armLights = new Light[RideParameters.HubCount];
         for (var i = 0; i < _hubs.Length; i++)
         {
             _hubs[i] = new Hub(i);
+            _armLights[i] = new Light(LightRating.MillArm);
         }
     }
 
@@ -46,6 +50,30 @@ public sealed class GreatMill : DomainModel
 
     /// <summary>The four hubs.</summary>
     public IReadOnlyList<Hub> Hubs => _hubs;
+
+    /// <summary>The fixture on the mill's crown.</summary>
+    public Light CrownLight => _crownLight;
+
+    /// <summary>The four mill arm fixtures, indexed by the hub each arm carries.</summary>
+    public IReadOnlyList<Light> ArmLights => _armLights;
+
+    /// <summary>
+    /// The highest intensity of any gondola on the ride — the crown follows the
+    /// hardest-hit gondola (<c>docs/06-ride-lighting.md</c> §6.3).
+    /// </summary>
+    public double Intensity
+    {
+        get
+        {
+            var max = 0d;
+            foreach (var hub in _hubs)
+            {
+                max = Math.Max(max, hub.Intensity);
+            }
+
+            return max;
+        }
+    }
 
     /// <summary>Total rotating gondola + passenger load carried by the mill (its "load weight").</summary>
     public double LoadKg
@@ -335,6 +363,27 @@ public sealed class GreatMill : DomainModel
         }
     }
 
+    /// <summary>
+    /// Advances the whole light rig by <paramref name="dt"/> seconds in
+    /// <paramref name="mode"/>: the crown follows the ride's hardest-hit gondola, each
+    /// arm light follows the hub it carries, and every hub advances its own fixtures
+    /// (<c>docs/06-ride-lighting.md</c> §6.7).
+    /// </summary>
+    public void AdvanceLights(LightingMode mode, double dt)
+    {
+        var crownIntensity = 0d;
+        for (var i = 0; i < _hubs.Length; i++)
+        {
+            var hubIntensity = _hubs[i].Intensity;
+            crownIntensity = Math.Max(crownIntensity, hubIntensity);
+
+            _armLights[i].Advance(mode.TargetLevel(hubIntensity), dt);
+            _hubs[i].AdvanceLights(mode, dt);
+        }
+
+        _crownLight.Advance(mode.TargetLevel(crownIntensity), dt);
+    }
+
     /// <summary>Releases every gondola brake across the ride.</summary>
     public void ReleaseAllGondolaBrakes()
     {
@@ -392,5 +441,7 @@ public sealed class GreatMill : DomainModel
         PassengerLoadKg,
         ImbalanceMillimeters,
         IsBalanced,
-        IsOverloaded);
+        IsOverloaded,
+        _crownLight.Lumens,
+        Light.LumensOf(_armLights));
 }

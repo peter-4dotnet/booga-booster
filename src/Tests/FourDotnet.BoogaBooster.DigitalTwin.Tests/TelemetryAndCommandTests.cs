@@ -81,6 +81,88 @@ public sealed class TelemetryAndCommandTests
         Assert.Equal(RestraintState.Secured, seatAfter.Restraint);
     }
 
+    [Fact]
+    public void Telemetry_carries_every_fixture_in_rig_order()
+    {
+        // Give every gondola a distinct intensity so each fixture settles at a distinct
+        // output, then check each telemetry slot reports the fixture it names.
+        var ride = Ride.Create();
+        foreach (var hub in ride.Mill.Hubs)
+        {
+            foreach (var gondola in hub.Gondolas)
+            {
+                var intensity = ((hub.Index * RideParameters.GondolasPerHub) + gondola.Index + 1) / 17d;
+                gondola.SetGForces(intensity * RideParameters.MaxGForce, 0d);
+            }
+        }
+
+        for (var i = 0; i < 120; i++)
+        {
+            ride.Mill.AdvanceLights(LightingMode.Reactive, RideParameters.TimeStep.TotalSeconds);
+        }
+
+        var telemetry = ride.ToTelemetry();
+
+        Assert.Equal(ride.Mill.CrownLight.Lumens, telemetry.Mill.CrownLightLumens);
+        Assert.Equal(ride.Mill.ArmLights.Select(l => l.Lumens), telemetry.Mill.ArmLightLumens);
+        foreach (var hub in ride.Mill.Hubs)
+        {
+            var hubTelemetry = telemetry.Hubs[hub.Index];
+            Assert.Equal(hub.Index, hubTelemetry.Index);
+            Assert.Equal(hub.Light.Lumens, hubTelemetry.LightLumens);
+            Assert.Equal(hub.ArmLights.Select(l => l.Lumens), hubTelemetry.ArmLightLumens);
+
+            foreach (var gondola in hub.Gondolas)
+            {
+                var gondolaTelemetry = telemetry.Gondolas.Single(g => g.HubIndex == hub.Index && g.Index == gondola.Index);
+                Assert.Equal(gondola.Light.Lumens, gondolaTelemetry.LightLumens);
+            }
+        }
+
+        // Every slot differs, so the ordering above is actually checked.
+        var all = new List<double> { telemetry.Mill.CrownLightLumens };
+        all.AddRange(telemetry.Mill.ArmLightLumens);
+        all.AddRange(telemetry.Hubs.SelectMany(h => h.ArmLightLumens));
+        all.AddRange(telemetry.Gondolas.Select(g => g.LightLumens));
+        Assert.Equal(1 + 4 + 16 + 16, all.Count);
+        Assert.Equal(4, telemetry.Mill.ArmLightLumens.Distinct().Count());
+        Assert.Equal(16, telemetry.Gondolas.Select(g => g.LightLumens).Distinct().Count());
+    }
+
+    [Fact]
+    public void Light_fields_are_added_to_the_json_payload_without_changing_existing_fields()
+    {
+        var json = System.Text.Json.JsonSerializer.SerializeToElement(
+            NewStore().GetTelemetry(),
+            new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web));
+
+        var mill = json.GetProperty("mill");
+        foreach (var existing in new[] { "powerWatts", "rpm", "direction", "loadKg", "passengerLoadKg", "imbalanceMillimeters", "isBalanced", "isOverloaded" })
+        {
+            Assert.True(mill.TryGetProperty(existing, out _), $"mill.{existing} is missing.");
+        }
+
+        Assert.Equal(0d, mill.GetProperty("crownLightLumens").GetDouble());
+        Assert.Equal(4, mill.GetProperty("armLightLumens").GetArrayLength());
+
+        var hub = json.GetProperty("hubs")[0];
+        foreach (var existing in new[] { "index", "powerWatts", "rpm", "direction", "loadKg" })
+        {
+            Assert.True(hub.TryGetProperty(existing, out _), $"hub.{existing} is missing.");
+        }
+
+        Assert.Equal(0d, hub.GetProperty("lightLumens").GetDouble());
+        Assert.Equal(4, hub.GetProperty("armLightLumens").GetArrayLength());
+
+        var gondola = json.GetProperty("gondolas")[0];
+        foreach (var existing in new[] { "hubIndex", "index", "brake", "angleDegrees", "rpm", "lateralG", "forwardG", "loadKg", "isSafeToDispatch", "seats" })
+        {
+            Assert.True(gondola.TryGetProperty(existing, out _), $"gondola.{existing} is missing.");
+        }
+
+        Assert.Equal(0d, gondola.GetProperty("lightLumens").GetDouble());
+    }
+
     private static SeatTelemetry SeatOf(RideTelemetry telemetry) =>
         telemetry.Gondolas
             .Single(g => g is { HubIndex: 0, Index: 0 })

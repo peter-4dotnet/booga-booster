@@ -114,6 +114,40 @@ public static class RideParameters
     /// <summary>Latest a seated passenger pulls their restraint down.</summary>
     public static readonly TimeSpan MaxRestraintCloseDelay = TimeSpan.FromSeconds(10);
 
+    // --- Lighting (docs/06-ride-lighting.md) ---
+    /// <summary>Rated output of the mill crown fixture (lm). See docs/06 §6.1.</summary>
+    public const double MillCrownLightRatedLumens = 5_000d;
+
+    /// <summary>Rated output of each mill arm fixture (lm). See docs/06 §6.1.</summary>
+    public const double MillArmLightRatedLumens = 4_000d;
+
+    /// <summary>Rated output of each hub fixture (lm). See docs/06 §6.1.</summary>
+    public const double HubLightRatedLumens = 2_500d;
+
+    /// <summary>Rated output of each hub arm fixture (lm). See docs/06 §6.1.</summary>
+    public const double HubArmLightRatedLumens = 2_500d;
+
+    /// <summary>Rated output of each gondola fixture (lm). See docs/06 §6.1.</summary>
+    public const double GondolaLightRatedLumens = 1_000d;
+
+    /// <summary>
+    /// Share of its rating a fixture emits as its glow: the whole target while the
+    /// ride is loading, safe or offloading, and the floor while it runs. See docs/06 §6.4.
+    /// </summary>
+    public const double LightGlowFraction = 0.15d;
+
+    /// <summary>
+    /// Time constant (s) of a fixture's envelope while its output rises. See docs/06 §6.5.
+    /// </summary>
+    public const double LightAttackSeconds = 0.1d;
+
+    /// <summary>
+    /// Time constant (s) of a fixture's envelope while its output falls. Slow enough
+    /// that no input can make the rig flash more than three times a second. See
+    /// docs/06 §6.5 and §6.6.
+    /// </summary>
+    public const double LightDecaySeconds = 0.8d;
+
     // --- Ride layout ---
     public const int HubCount = 4;
     public const int GondolasPerHub = 4;

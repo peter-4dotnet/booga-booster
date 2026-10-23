@@ -349,8 +349,8 @@ public sealed class Ride : DomainModel
 
     /// <summary>
     /// Advances the whole simulation one fixed step: state-dependent natural passenger
-    /// behaviour, the automatic (condition-driven) transitions, and — while in
-    /// motion — the physics.
+    /// behaviour, the automatic (condition-driven) transitions, the physics while in
+    /// motion, and finally the light rig, which advances in every state.
     /// </summary>
     public void Advance(TimeSpan dt)
     {
@@ -398,6 +398,10 @@ public sealed class Ride : DomainModel
             _state = RideState.Idle;
         }
 
+        // 5. The light rig follows this tick's G in the state the ride ended up in, so a
+        //    ride that has just gone idle starts fading the same tick (docs/06 §6.7).
+        _mill.AdvanceLights(LightingModeFor(_state), dt.TotalSeconds);
+
         _simulationTimeSeconds += dt.TotalSeconds;
         MarkChanged();
     }
@@ -433,6 +437,18 @@ public sealed class Ride : DomainModel
             hubs,
             gondolas);
     }
+
+    /// <summary>
+    /// The light rig's mode in a lifecycle state (<c>docs/06-ride-lighting.md</c> §6.4):
+    /// dark when idle, a steady glow while riders board or leave, and G-reactive while
+    /// the ride moves — including an emergency stop.
+    /// </summary>
+    internal static LightingMode LightingModeFor(RideState state) => state switch
+    {
+        RideState.Idle => LightingMode.Off,
+        RideState.Started or RideState.Stopping or RideState.EmergencyStop => LightingMode.Reactive,
+        _ => LightingMode.Glow,
+    };
 
     /// <summary>Runs the entry side-effects for the state being entered.</summary>
     private void ApplyEntry(RideState target)

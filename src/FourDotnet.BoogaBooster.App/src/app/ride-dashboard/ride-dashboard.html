@@ -20,6 +20,9 @@
     <div class="panel">
       <bb-weather-panel />
     </div>
+    <div class="panel">
+      <bb-lights-panel [mill]="ride.mill()" [hubs]="ride.hubs()" [gondolas]="ride.gondolas()" />
+    </div>
   </section>
 
   <section class="center" aria-label="Ride visualization">
@@ -29,6 +32,7 @@
       [hubSpeedRpm]="ride.hubSpeedRpm()"
       [hubDirection]="ride.hubDirection()"
       [gondolaBrakeEngaged]="ride.gondolaBrakeEngaged()"
+      [lights]="lights()"
     />
   </section>
 

@@ -3,12 +3,16 @@ import {
   GONDOLAS_PER_HUB,
   HUB_COUNT,
   HUB_MAX_POWER_WATTS,
+  LIGHT_RATINGS,
+  LIGHT_RIG_RATED_LUMENS,
   MILL_MAX_POWER_WATTS,
   RideTelemetryGondolaStreamDto,
   RideTelemetryHubStreamDto,
   RideTelemetryStreamDto,
   SEATS_PER_GONDOLA,
+  fixtureLight,
   mapRideTelemetry,
+  totalLightLumens,
 } from './ride.models';
 
 /** A hub DTO with the given index and no load, always forward. */
@@ -235,5 +239,115 @@ describe('mapRideTelemetry', () => {
     const model = mapRideTelemetry(buildDto());
     expect(model.gondolas).toHaveLength(GONDOLA_COUNT);
     model.gondolas.forEach((gondola) => expect(gondola.seats).toHaveLength(SEATS_PER_GONDOLA));
+  });
+});
+
+describe('light rig', () => {
+  /** A frame whose rig carries a distinct output on every fixture. */
+  function litDto(): RideTelemetryStreamDto {
+    const dto = buildDto();
+    return {
+      ...dto,
+      mill: { ...dto.mill, crownLightLumens: 2500, armLightLumens: [400, 800, 1200, 1600] },
+      hubs: dto.hubs.map((hub) => ({
+        ...hub,
+        lightLumens: 1000 + hub.index,
+        armLightLumens: [10, 20, 30, 40].map((value) => value + hub.index * 100),
+      })),
+      gondolas: dto.gondolas.map((gondola) => ({
+        ...gondola,
+        lightLumens: gondola.hubIndex * 100 + gondola.index * 10 + 5,
+      })),
+    };
+  }
+
+  it('rates the 41 fixtures of the rig at 87 000 lm in total', () => {
+    expect(LIGHT_RATINGS).toEqual({
+      millCrown: 5000,
+      millArm: 4000,
+      hub: 2500,
+      hubArm: 2500,
+      gondola: 1000,
+    });
+    expect(LIGHT_RIG_RATED_LUMENS).toBe(87000);
+  });
+
+  it('maps the mill crown and its arm lights in hub order', () => {
+    const model = mapRideTelemetry(litDto());
+
+    expect(model.mill.crownLight).toEqual({ lumens: 2500, level: 0.5 });
+    expect(model.mill.armLights.map((light) => light.lumens)).toEqual([400, 800, 1200, 1600]);
+    expect(model.mill.armLights.map((light) => light.level)).toEqual([0.1, 0.2, 0.3, 0.4]);
+  });
+
+  it('maps each hub light and its arm lights in gondola order', () => {
+    const model = mapRideTelemetry(litDto());
+
+    expect(model.hubs[0].light).toEqual({ lumens: 1000, level: 0.4 });
+    expect(model.hubs[2].light.lumens).toBe(1002);
+    expect(model.hubs[1].armLights.map((light) => light.lumens)).toEqual([110, 120, 130, 140]);
+    expect(model.hubs[1].armLights[0].level).toBeCloseTo(110 / 2500, 12);
+  });
+
+  it("maps each gondola's own light", () => {
+    const model = mapRideTelemetry(litDto());
+    // Gondola id = hubIndex * 4 + index + 1, so id 7 is hub 1, gondola 2.
+    const gondola = model.gondolas.find((g) => g.id === 7)!;
+
+    expect(gondola.light).toEqual({ lumens: 125, level: 0.125 });
+  });
+
+  it('derives every level as lumens over the fixture rating', () => {
+    expect(fixtureLight(750, LIGHT_RATINGS.millCrown)).toEqual({ lumens: 750, level: 0.15 });
+    expect(fixtureLight(1000, LIGHT_RATINGS.gondola)).toEqual({ lumens: 1000, level: 1 });
+    expect(fixtureLight(0, LIGHT_RATINGS.hub)).toEqual({ lumens: 0, level: 0 });
+  });
+
+  it('clamps an out-of-range or missing output into the fixture rating', () => {
+    expect(fixtureLight(1200, LIGHT_RATINGS.gondola)).toEqual({ lumens: 1000, level: 1 });
+    expect(fixtureLight(-5, LIGHT_RATINGS.gondola)).toEqual({ lumens: 0, level: 0 });
+    expect(fixtureLight(Number.NaN, LIGHT_RATINGS.gondola)).toEqual({ lumens: 0, level: 0 });
+    expect(fixtureLight(undefined, LIGHT_RATINGS.gondola)).toEqual({ lumens: 0, level: 0 });
+  });
+
+  it('reads an older frame without light fields as a dark rig of 41 fixtures', () => {
+    const model = mapRideTelemetry(buildDto());
+
+    expect(model.mill.crownLight.lumens).toBe(0);
+    expect(model.mill.armLights).toHaveLength(HUB_COUNT);
+    model.hubs.forEach((hub) => expect(hub.armLights).toHaveLength(GONDOLAS_PER_HUB));
+    expect(totalLightLumens(model)).toBe(0);
+  });
+
+  it('sums all 41 fixtures into the total output', () => {
+    const model = mapRideTelemetry(litDto());
+
+    const mill = 2500 + 400 + 800 + 1200 + 1600;
+    const hubs = [0, 1, 2, 3].reduce(
+      (total, h) => total + (1000 + h) + (10 + 20 + 30 + 40 + 4 * h * 100),
+      0,
+    );
+    const gondolas = Array.from(
+      { length: GONDOLA_COUNT },
+      (_, g) => Math.floor(g / GONDOLAS_PER_HUB) * 100 + (g % GONDOLAS_PER_HUB) * 10 + 5,
+    ).reduce((total, value) => total + value, 0);
+
+    expect(totalLightLumens(model)).toBe(mill + hubs + gondolas);
+  });
+
+  it('totals a rig at full output to its rated 87 000 lm', () => {
+    const dto = buildDto();
+    const full: RideTelemetryStreamDto = {
+      ...dto,
+      mill: { ...dto.mill, crownLightLumens: 5000, armLightLumens: [4000, 4000, 4000, 4000] },
+      hubs: dto.hubs.map((hub) => ({
+        ...hub,
+        lightLumens: 2500,
+        armLightLumens: [2500, 2500, 2500, 2500],
+      })),
+      gondolas: dto.gondolas.map((gondola) => ({ ...gondola, lightLumens: 1000 })),
+    };
+
+    expect(totalLightLumens(mapRideTelemetry(full))).toBe(LIGHT_RIG_RATED_LUMENS);
   });
 });

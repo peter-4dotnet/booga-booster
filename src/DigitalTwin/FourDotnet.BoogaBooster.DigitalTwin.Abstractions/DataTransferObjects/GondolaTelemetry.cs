@@ -17,6 +17,7 @@ namespace FourDotnet.BoogaBooster.DigitalTwin.Abstractions.DataTransferObjects;
 /// <c>true</c> when every occupied seat's restraint is secured.
 /// </param>
 /// <param name="Seats">Per-seat sensor readings.</param>
+/// <param name="LightLumens">Current output of the gondola's light fixture, in lumens.</param>
 public sealed record GondolaTelemetry(
     int HubIndex,
     int Index,
@@ -27,4 +28,5 @@ public sealed record GondolaTelemetry(
     double ForwardG,
     double LoadKg,
     bool IsSafeToDispatch,
-    IReadOnlyList<SeatTelemetry> Seats);
+    IReadOnlyList<SeatTelemetry> Seats,
+    double LightLumens);

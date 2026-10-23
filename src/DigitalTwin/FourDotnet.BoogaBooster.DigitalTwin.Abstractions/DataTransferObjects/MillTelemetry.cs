@@ -25,6 +25,11 @@ namespace FourDotnet.BoogaBooster.DigitalTwin.Abstractions.DataTransferObjects;
 /// <c>true</c> when <paramref name="PassengerLoadKg"/> exceeds the maximum safe
 /// load, in which case the ride is unsafe with reason "overloaded".
 /// </param>
+/// <param name="CrownLightLumens">Current output of the mill crown's light fixture, in lumens.</param>
+/// <param name="ArmLightLumens">
+/// Current output of the four mill arm light fixtures, in lumens, ordered by the
+/// index of the hub each arm carries.
+/// </param>
 public sealed record MillTelemetry(
     double PowerWatts,
     double Rpm,
@@ -33,4 +38,6 @@ public sealed record MillTelemetry(
     double PassengerLoadKg,
     double ImbalanceMillimeters,
     bool IsBalanced,
-    bool IsOverloaded);
+    bool IsOverloaded,
+    double CrownLightLumens,
+    IReadOnlyList<double> ArmLightLumens);
