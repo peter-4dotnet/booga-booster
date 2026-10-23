@@ -47,7 +47,7 @@
 ## 8. Integration
 
 - [x] 8.1 Run `dotnet build BoogaBooster.slnx`, `dotnet test BoogaBooster.slnx` and `npm test`; verify all are green
-- [ ] 8.2 Run the AppHost, start a ride with passengers, and confirm in the dashboard that the rig glows while loading, brightens with G while running, fades on stop and goes dark at idle
+- [x] 8.2 Run the AppHost, start a ride with passengers, and confirm in the dashboard that the rig glows while loading, brightens with G while running, fades on stop and goes dark at idle
 
 ## Workflow follow-up
 
